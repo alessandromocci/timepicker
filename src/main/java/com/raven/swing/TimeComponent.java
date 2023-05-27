@@ -69,8 +69,14 @@ public class TimeComponent extends JComponent {
     private boolean isHour = true;
     private List<EventTimeSelected> events;
     private EventTimeChange eventTimeChange;
+    private String selectedFormatPattern;
+    public static final String TIME_FORMAT_PATTERN_12H = "hh:mm aa";
+	public static final String TIME_FORMAT_PATTERN_24H = "HH:mm";
+	
+	Graphics2D g2 = null;
 
-    public TimeComponent() {
+    public TimeComponent(String selectedFormatPattern) {
+    	this.selectedFormatPattern = selectedFormatPattern;
         events = new ArrayList<>();
         setBackground(Color.WHITE);
         setForeground(new Color(50, 50, 50));
@@ -90,6 +96,26 @@ public class TimeComponent extends JComponent {
                     } else {
                         checkMouseSelect(me);
                     }
+                }else if(SwingUtilities.isRightMouseButton(me)) {
+                	if (isHour) {
+                		int hourSelected = getSelectedHour(me);
+                		if (hourSelected >= 12) {
+                			hourSelected -=12;
+                			currentSelected -=12;
+                		}
+                		else { 
+                			hourSelected +=12;
+                			currentSelected +=12;
+                		}
+                		setTime_hour(hourSelected);
+                        if (getTime_hour() == -1) {
+                            setTime_hour(currentSelected);
+                        }
+                        runEvent(getTime_hour());
+                        paintComponent(g2);
+                        repaint();
+                        
+                	}
                 }
             }
         });
@@ -134,8 +160,9 @@ public class TimeComponent extends JComponent {
         int y = (height - size) / 2;
         int space = isHour ? 30 : 6;
         int start = 90;
-        int max = isHour ? 12 : 59;
-        for (int i = isHour ? 1 : 0; i <= max; i++) {
+        int max = isHour ? getMaxTargetHourCount(time_hour) : 59;
+        int minHourCountFrom = getMinStartHourCount(time_hour);
+        for (int i = isHour ? minHourCountFrom : 0; i <= max; i++) {
             Shape s = new Arc2D.Double(x, y, size, size, start - (space * i) - (space / 2), space, Arc2D.PIE);
             if (s.contains(me.getPoint())) {
                 currentSelected = i;
@@ -163,8 +190,9 @@ public class TimeComponent extends JComponent {
         int y = (height - size) / 2;
         int space = isHour ? 30 : 6;
         int start = 90;
-        int max = isHour ? 12 : 59;
-        for (int i = isHour ? 1 : 0; i <= max; i++) {
+        int maxHourTarget = isHour ? getMaxTargetHourCount(time_hour) : 59;
+        int minHourStart = getMinStartHourCount(time_hour);
+        for (int i = isHour ? minHourStart : 0; i <= maxHourTarget; i++) {
             Shape s = new Arc2D.Double(x, y, size, size, start - (space * i) - (space / 2), space, Arc2D.PIE);
             if (s.contains(me.getPoint())) {
                 if (animator.isRunning()) {
@@ -187,6 +215,10 @@ public class TimeComponent extends JComponent {
         }
     }
 
+	private int getMaxHours() {
+		return TIME_FORMAT_PATTERN_12H.equals(this.selectedFormatPattern) ? 12 : 24;
+	}
+
     private int getSelectedHour(MouseEvent me) {
         int width = getWidth();
         int height = getHeight();
@@ -195,8 +227,9 @@ public class TimeComponent extends JComponent {
         int y = (height - size) / 2;
         int space = isHour ? 30 : 6;
         int start = 90;
-        int max = isHour ? 12 : 59;
-        for (int i = isHour ? 1 : 0; i <= max; i++) {
+        int max = isHour ? getMaxTargetHourCount(time_hour) : 59;
+        int minStartHourCount = getMinStartHourCount(time_hour);
+        for (int i = isHour ? minStartHourCount : 0; i <= max; i++) {
             Shape s = new Arc2D.Double(x, y, size, size, start - (space * i) - (space / 2), space, Arc2D.PIE);
             if (s.contains(me.getPoint())) {
                 return i;
@@ -205,12 +238,30 @@ public class TimeComponent extends JComponent {
         return -1;
     }
 
-    private float calulateHour(float currentHour, int targetHour) {
+    private int getMinStartHourCount(int hourToCompare) {
+    	int minHourcount = 1;
+    	if (TIME_FORMAT_PATTERN_24H.equals(this.selectedFormatPattern) && hourToCompare > 12) {
+    		if (hourToCompare <= 24)
+    			return minHourcount = 13;
+    	}
+		return minHourcount;
+	}
+    
+    private int getMaxTargetHourCount(int hourToCompare) {
+    	int maxHourcount = 12;
+    	if (TIME_FORMAT_PATTERN_24H.equals(this.selectedFormatPattern) && hourToCompare > 12) {
+    		if(hourToCompare <= 24)
+    			return maxHourcount = 24;
+    	}
+		return maxHourcount;
+	}
+
+	private float calulateHour(float currentHour, int targetHour) {
         float t = targetHour - currentHour;
         if (t > (isHour ? 6 : 30)) {
-            t = -((isHour ? 12 : 60) - t);
+            t = -((isHour ? getMaxHours() : 60) - t);
         } else if (t <= -(isHour ? 6 : 30)) {
-            t += (isHour ? 12 : 60);
+            t += (isHour ? getMaxHours() : 60);
         }
         return t;
     }
@@ -222,7 +273,8 @@ public class TimeComponent extends JComponent {
         int size = Math.min(width, height);
         int x = (width - size) / 2;
         int y = (height - size) / 2;
-        Graphics2D g2 = (Graphics2D) grphcs;
+        //Graphics2D g2 = (Graphics2D) grphcs;
+        g2 = (Graphics2D)grphcs;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(getBackground());
         g2.fillOval(x, y, size, size);
@@ -232,24 +284,26 @@ public class TimeComponent extends JComponent {
         g2.setColor(color);
         g2.fillOval(centerX - centerSize / 2, centerY - centerSize / 2, centerSize, centerSize);
         drawLineHour(g2, hourAnimat);
-        createNumber(g2);
+        createClockNumber(g2);
         g2.dispose();
         super.paintComponent(grphcs);
     }
 
-    private void createNumber(Graphics2D g2) {
+    private void createClockNumber(Graphics2D g2) {
         DecimalFormat df = new DecimalFormat("00");
         int width = getWidth();
         int height = getHeight();
         int size = Math.min(width, height);
         int centerX = width / 2;
         int centerY = height / 2;
-        for (int i = 12; i >= 1; i--) {
+        int minHourStart = !isHour ? 1 : getMinStartHourCount(time_hour);
+        int massimo = !isHour ? 12 : getMaxTargetHourCount(time_hour);
+        for (int i = massimo; i >= minHourStart; i--) {
             String number;
             if (isHour) {
-                number = i + "";
+                number = (i) + "";
             } else {
-                number = df.format(i == 12 ? 0 : (i * 5));
+                number = df.format(i == massimo ? 0 : (i * 5));
             }
             Dimension stringSize = getStringSize(g2, number);
             float angle = RAD_PER_NUM * i;
@@ -288,7 +342,7 @@ public class TimeComponent extends JComponent {
     }
 
     private int convertLastTargetToHour(float lastTarget) {
-        int value = isHour ? 12 : 60;
+        int value = isHour ? getMaxHours() : 60;
         if (lastTarget <= 0) {
             lastTarget += value;
         } else if (lastTarget > value) {
@@ -298,7 +352,7 @@ public class TimeComponent extends JComponent {
     }
 
     private float convertLastTarget(float lastTarget) {
-        int value = isHour ? 12 : 60;
+        int value = isHour ? getMaxHours() : 60;
         if (lastTarget <= 0) {
             lastTarget += value;
         } else if (lastTarget > value) {
@@ -308,7 +362,7 @@ public class TimeComponent extends JComponent {
     }
 
     private int convertHourToTargetMinute(int hour) {
-        if (hour == 12) {
+        if (hour == getMaxTargetHourCount(currentSelected)) {
             return 0;
         } else {
             return hour * 5;
@@ -317,7 +371,7 @@ public class TimeComponent extends JComponent {
 
     private int convertMinuteToTargetHour(int minute) {
         if (minute == 0) {
-            return 12;
+            return getMaxHours();
         } else {
             return minute / 5;
         }

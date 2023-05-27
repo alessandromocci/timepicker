@@ -17,13 +17,19 @@ import javax.swing.SwingUtilities;
 
 public class TimePicker extends javax.swing.JPanel {
 
-    private final SimpleDateFormat format = new SimpleDateFormat("hh:mm aa");
+	public static final String TIME_FORMAT_PATTERN_12H = "hh:mm aa";
+	public static final String TIME_FORMAT_PATTERN_24H = "HH:mm";
+    //private final SimpleDateFormat format = new SimpleDateFormat("hh:mm aa");
+    private final SimpleDateFormat format;
     private final DecimalFormat numberFormat = new DecimalFormat("00");
     private JTextField displayText;
     private List<EventTimePicker> events;
     private JPopupMenu menu;
+    private String selectedFormatPattern;
 
-    public TimePicker() {
+    public TimePicker(String formatHourPattern) {
+    	this.selectedFormatPattern = formatHourPattern;
+    	format = new SimpleDateFormat(this.selectedFormatPattern);
         initComponents();
         init();
     }
@@ -78,7 +84,15 @@ public class TimePicker extends javax.swing.JPanel {
 
     private void displayOnText() {
         if (displayText != null) {
-            displayText.setText(cmdHour.getText() + ":" + cmdMinute.getText() + " " + (cmdAM.getForeground() == Color.WHITE ? "AM" : "PM"));
+        	StringBuffer sb = new StringBuffer(cmdHour.getText());
+        	sb.append(":");
+        	sb.append(cmdMinute.getText());
+        	if(TIME_FORMAT_PATTERN_12H.equals(this.selectedFormatPattern)) {
+        		sb.append(" ");
+        		sb.append((cmdAM.getForeground() == Color.WHITE ? "AM" : "PM"));
+        	}
+        	//displayText.setText(cmdHour.getText() + ":" + cmdMinute.getText() + " " + (cmdAM.getForeground() == Color.WHITE ? "AM" : "PM"));
+        	displayText.setText(sb.toString());
         }
     }
 
@@ -92,9 +106,13 @@ public class TimePicker extends javax.swing.JPanel {
         panel = new javax.swing.JPanel();
         cmdAM = new com.raven.swing.TimePickerButton();
         cmdPM = new com.raven.swing.TimePickerButton();
+        if (TIME_FORMAT_PATTERN_24H.equals(this.selectedFormatPattern)) {
+        	cmdAM.setEnabled(false);
+        	cmdPM.setEnabled(false);
+        }
         cmdHour = new com.raven.swing.TimePickerButton();
         cmdMinute = new com.raven.swing.TimePickerButton();
-        timeComponent = new com.raven.swing.TimeComponent();
+        timeComponent = new com.raven.swing.TimeComponent(this.selectedFormatPattern);
         cmdOK = new com.raven.swing.TimePickerButton();
         cmdCancel = new com.raven.swing.TimePickerButton();
 
@@ -124,7 +142,8 @@ public class TimePicker extends javax.swing.JPanel {
         cmdAM.setBackground(new java.awt.Color(37, 88, 207));
         cmdAM.setBorder(null);
         cmdAM.setForeground(new java.awt.Color(255, 255, 255));
-        cmdAM.setText("AM");
+        String AMButtonText = TIME_FORMAT_PATTERN_12H.equals(this.selectedFormatPattern) ? "AM" : "";
+        cmdAM.setText(AMButtonText);
         cmdAM.setFont(new java.awt.Font("sansserif", 1, 15)); // NOI18N
         cmdAM.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -135,7 +154,8 @@ public class TimePicker extends javax.swing.JPanel {
         cmdPM.setBackground(new java.awt.Color(37, 88, 207));
         cmdPM.setBorder(null);
         cmdPM.setForeground(new java.awt.Color(255, 255, 255));
-        cmdPM.setText("PM");
+        String PMButtonText = TIME_FORMAT_PATTERN_12H.equals(this.selectedFormatPattern) ? "PM" : "";
+        cmdPM.setText(PMButtonText);
         cmdPM.setFont(new java.awt.Font("sansserif", 1, 15)); // NOI18N
         cmdPM.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -345,7 +365,8 @@ public class TimePicker extends javax.swing.JPanel {
         String now = format.format(date);
         int hour = Integer.valueOf(now.split(":")[0]);
         int minute = Integer.valueOf(now.split(":")[1].split(" ")[0]);
-        changeAM(now.split(" ")[1].equals("AM"));
+        if (TIME_FORMAT_PATTERN_12H.equals(this.selectedFormatPattern))
+        	changeAM(now.split(" ")[1].equals("AM"));
         cmdHour.setText(numberFormat.format(hour));
         cmdMinute.setText(numberFormat.format(minute));
         timeComponent.setSelectedHour(hour, minute);
