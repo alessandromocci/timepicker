@@ -102,10 +102,12 @@ public class TimeComponent extends JComponent {
                 		if (hourSelected >= 12) {
                 			hourSelected -=12;
                 			currentSelected -=12;
+                			time_hour -= 12;
                 		}
                 		else { 
                 			hourSelected +=12;
                 			currentSelected +=12;
+                			time_hour += 12;
                 		}
                 		setTime_hour(hourSelected);
                         if (getTime_hour() == -1) {
@@ -362,7 +364,7 @@ public class TimeComponent extends JComponent {
     }
 
     private int convertHourToTargetMinute(int hour) {
-        if (hour == getMaxTargetHourCount(currentSelected)) {
+        if (hour == getMaxTargetHourCount(time_hour)) {
             return 0;
         } else {
             return hour * 5;
